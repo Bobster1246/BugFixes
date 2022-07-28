@@ -11,3 +11,4 @@ Please file issues (with an attached save if possible) for suggested additional 
 Currently implemented fixes:
 
 - Brownfur Transmuter capstone now properly applies +4 to each buff 
+- True seeing now counters greater invisibility

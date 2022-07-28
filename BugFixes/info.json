@@ -3,7 +3,7 @@
   "DisplayName": "BugFixes",
   "Author": "Bobster1246",
   "ManagerVersion": "0.21.3",
-  "Version": "1.0.0",
+  "Version": "1.0.1",
   "Requirements": [],
   "AssemblyName": "BugFixes.dll",
   "EntryMethod": "BugFixes.Main.Load"

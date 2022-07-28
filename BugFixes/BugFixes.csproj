@@ -33,15 +33,27 @@
   <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\0Harmony.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Owlcat.Runtime.Visual, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\Owlcat.Runtime.Visual.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.5.0\lib\net461\System.ValueTuple.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -50,18 +62,23 @@
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityModManager">
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\UnityModManager\UnityModManager.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -72,6 +89,10 @@
     <None Include="Info.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
