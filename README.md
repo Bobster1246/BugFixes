@@ -12,3 +12,7 @@ Currently implemented fixes:
 
 - Brownfur Transmuter capstone now properly applies +4 to each buff 
 - True seeing now counters greater invisibility
+- Body spells are now affected by BFT Powerful Change
+- Enduring Enchanment now works for item enchants
+- Dazzling Display while mounted now works
+- Non-spell based dispels now work properly (Radiance, Dispelling Attack, etc)

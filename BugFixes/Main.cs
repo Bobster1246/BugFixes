@@ -20,7 +20,22 @@ using Kingmaker.RuleSystem.Rules;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.Utility;
-
+using Kingmaker.Blueprints.JsonSystem;
+using Kingmaker.Blueprints;
+using Kingmaker.UnitLogic.Abilities.Blueprints;
+using Kingmaker.Visual.Animation.Kingmaker;
+using Kingmaker.Visual.Animation.Kingmaker.Actions;
+using Kingmaker.UnitLogic.Buffs.Blueprints;
+using Kingmaker.Designers.Mechanics.Buffs;
+using Kingmaker.Items.Slots;
+using System.Runtime.CompilerServices;
+using Kingmaker.EntitySystem.Persistence;
+using Kingmaker.UnitLogic.Mechanics.Actions;
+using Kingmaker.ElementsSystem;
+using Kingmaker.UI.GenericSlot;
+using Kingmaker.Blueprints.Items.Ecnchantments;
+using Kingmaker.Blueprints.Facts;
+using Kingmaker.Controllers;
 
 namespace BugFixes
 {
@@ -30,10 +45,18 @@ namespace BugFixes
 
         static bool Load(UnityModManager.ModEntry mE)
         {
-            modEntry = mE;
-            var harmony = new Harmony(modEntry.Info.Id);
-            harmony.PatchAll();
-            return true;
+            try
+            {
+
+                modEntry = mE;
+                var harmony = new Harmony(modEntry.Info.Id);
+                harmony.PatchAll();
+                return true;
+            } catch (Exception ex)
+            {
+                modEntry.Logger.LogException(ex);
+                return false;
+            }
         }
 
     }
@@ -242,6 +265,235 @@ namespace BugFixes
         }
     }
 
+    [HarmonyPatch(typeof(BlueprintsCache), nameof(BlueprintsCache.Init))]
+    static class BlueprintsCache_Init_Patch
+    {
+        static bool loaded = false;
+        static void Postfix()
+        {
+            try
+            {
+                if (loaded) return;
+                loaded = true;
+
+                PatchDazzling();
+                PatchBody();
+
+                FixEnduringEnchanment.GetBlueprints();
+            }
+            catch (Exception e)
+            {
+                Main.modEntry.Logger.LogException(e);
+            } 
+        }
+
+        static void PatchBody()
+        {
+            Main.modEntry.Logger.Log("About to start patching body buffs");
+            string[] body_buffs = new string[] {
+                "b574e1583768798468335d8cdb77e94c", // FieryBody
+                "2eabea6a1f9a58246a822f207e8ca79e", // IronBody
+            };
+
+            foreach (string body_buff in body_buffs)
+            {
+                BlueprintBuff blue = ResourcesLibrary.TryGetBlueprint<BlueprintBuff>(BlueprintGuid.Parse(body_buff));
+                for (int i = 0; i < blue.ComponentsArray.Length; ++i)
+                {
+                    if (blue.ComponentsArray[i] is AddStatBonusAbilityValue)
+                    {
+                        AddStatBonusAbilityValue original = (AddStatBonusAbilityValue) blue.ComponentsArray[i];
+
+                        AddStatBonus replacement = new AddStatBonus();
+                        replacement.Descriptor = original.Descriptor;
+                        replacement.Value = original.Value.Value;
+                        replacement.Stat = original.Stat;
+                        replacement.ScaleByBasicAttackBonus = false;
+
+                        blue.ComponentsArray[i] = replacement;
+                    }
+                    
+                }
+            }
 
 
+            Main.modEntry.Logger.Log("Done patching body buffs");
+
+        }
+
+        static void PatchDazzling()
+        {
+            Main.modEntry.Logger.Log("About to start patching Dazzling");
+            string[] dazzling_actions = new string[] {
+                "5f3126d4120b2b244a95cb2ec23d69fb", // Normal version
+                "08c10a3914fa5bf459054a34a7541704", // Move action
+                "ba2951ffa6bcbfb4c83cdfb6919862c5", // Standard action
+            };
+
+            foreach (string dazzling_action in dazzling_actions)
+            {
+                BlueprintAbility blue = ResourcesLibrary.TryGetBlueprint<BlueprintAbility>(BlueprintGuid.Parse(dazzling_action));
+                blue.Animation = UnitAnimationActionCastSpell.CastAnimationStyle.Omni;
+            }
+
+
+            Main.modEntry.Logger.Log("Done patching Dazzling");
+        }
+    }
+
+    //HarmonyPatch attribute allows PatchAll to find the patch
+    [HarmonyPatch(typeof(ContextActionEnchantWornItem), nameof(ContextActionEnchantWornItem.RunAction))]
+    static class FixEnduringEnchanment
+    {
+
+        static BlueprintUnitFact enduring = null;
+        static BlueprintUnitFact greater_enduring = null;
+
+        public static void GetBlueprints()
+        {
+            try
+            {
+                enduring = ResourcesLibrary.TryGetBlueprint<BlueprintUnitFact>(BlueprintGuid.Parse("2f206e6d292bdfb4d981e99dcf08153f"));
+                greater_enduring = ResourcesLibrary.TryGetBlueprint<BlueprintUnitFact>(BlueprintGuid.Parse("13f9269b3b48ae94c896f0371ce5e23c"));
+                
+
+            }
+            catch (Exception ex)
+            {
+                Main.modEntry.Logger.LogException(ex);
+            }
+        }
+
+        static bool Prefix(ContextActionEnchantWornItem __instance)
+        {
+            try
+            {
+                FixedRunAction(__instance);
+            } catch (Exception ex)
+            {
+                Main.modEntry.Logger.LogException(ex);
+            }
+
+            return false;
+        }
+
+        public static void FixedRunAction(ContextActionEnchantWornItem enchant)
+        {
+            MechanicsContext context = ContextData<MechanicsContext.Data>.Current?.Context;
+            if (context == null)
+            {
+                Main.modEntry.Logger.Error("Unable to apply buff: no context found");
+            }
+            else
+            {
+                
+                Rounds rounds = enchant.DurationValue.Calculate(context);
+                UnitEntityData first = context.MaybeCaster;
+                
+                TargetWrapper wrapper = Traverse.Create(enchant).Property("Target").GetValue<TargetWrapper>();
+                UnitEntityData second = wrapper?.Unit;
+
+                UnitEntityData unitEntityData = enchant.ToCaster ? first : second;
+                if (unitEntityData == (UnitDescriptor)null)
+                {
+                    Main.modEntry.Logger.Error("Can't apply buff: target is null");
+                }
+                else
+                {
+                    
+                    ItemSlot slot = EquipSlotBase.ExtractSlot(enchant.Slot, unitEntityData.Body);
+                    if (!slot.HasItem)
+                        return;
+                    
+                    ItemEnchantment fact = slot.Item.Enchantments.GetFact<ItemEnchantment>((BlueprintScriptableObject)enchant.Enchantment);
+                    
+                    if (fact != null)
+                    {
+                        if (!fact.IsTemporary)
+                            return;
+                        slot.Item.RemoveEnchantment(fact);
+                    }
+               
+
+                    bool has_enduring = context.MaybeCaster.HasFact(enduring);
+                    bool has_greater_enduring = context.MaybeCaster.HasFact(greater_enduring);
+                    
+
+                    if ((greater_enduring && (rounds.Seconds >= 5.Minutes())) || (has_enduring && (rounds.Seconds >= 60.Minutes())))
+                    {
+                        rounds = new Rounds((int)(24.Hours().TotalSeconds) / 6);
+                    }
+                    
+
+                    slot.Item.AddEnchantment(enchant.Enchantment, context, new Rounds?(rounds)).RemoveOnUnequipItem = enchant.RemoveOnUnequip;
+                }
+            }
+        }
+    }
+
+
+    [HarmonyPatch(typeof(RuleDispelMagic), nameof(RuleDispelMagic.OnTrigger))]
+    static class FixDispel
+    {
+
+        static bool Prefix(RuleDispelMagic __instance, RulebookEventContext rulebookContext)
+        {
+            try
+            {
+                FixedOnTrigger(__instance, rulebookContext);
+            }
+            catch (Exception ex)
+            {
+                Main.modEntry.Logger.LogException(ex);
+            }
+            return false;
+        }
+
+        public static void FixedOnTrigger(RuleDispelMagic rule, RulebookEventContext rulebookContext)
+        {
+            Traverse CheckRoll = Traverse.Create(rule).Property("CheckRoll");
+            Traverse CasterLevel = Traverse.Create(rule).Property("CasterLevel");
+            Traverse DC = Traverse.Create(rule).Property("DC");
+
+            switch (rule.Check)
+            {
+                case RuleDispelMagic.CheckType.None:
+                    rule.Buff?.Remove();
+                    rule.AreaEffect?.ForceEnd();
+                    CheckRoll.SetValue(Rulebook.Trigger<RuleRollD20>(new RuleRollD20(Rulebook.CurrentContext.CurrentEvent?.Initiator, 20)));
+                    return;
+                case RuleDispelMagic.CheckType.CasterLevel:
+                    DC.SetValue(11 + rule.Context.Params.CasterLevel);
+                    break;
+                case RuleDispelMagic.CheckType.DC:
+                    DC.SetValue(rule.Context.Params.DC);
+                    break;
+                case RuleDispelMagic.CheckType.SkillDC:
+                    DC.SetValue(rule.Context.Params.DC);
+                    break;
+                case RuleDispelMagic.CheckType.SkillCasterLevel:
+                    DC.SetValue(11 + rule.Context.Params.CasterLevel);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            
+            MechanicsContext context = rule.Reason.Context;
+            CasterLevel.SetValue(rule.Check == RuleDispelMagic.CheckType.SkillDC || rule.Check == RuleDispelMagic.CheckType.SkillCasterLevel ? (int)rule.Initiator.Stats.GetStat(rule.Skill) : (((context != null) && (context.Params.CasterLevel != 1)) ? context.Params.CasterLevel : rule.Initiator.Descriptor.Progression.CharacterLevel));
+            if (rule.MaxCasterLevel.HasValue)
+            {
+                CasterLevel.SetValue(Math.Min(rule.MaxCasterLevel.Value, rule.CasterLevel));
+            }
+                
+            CheckRoll.SetValue(RulebookEvent.Dice.D20);
+            if (rule.RollOverride > 0)
+                rule.CheckRoll.Override(rule.RollOverride);
+            if (!rule.Success)
+                return;
+            rule.Buff?.Remove();
+            rule.AreaEffect?.ForceEnd();
+        }
+    }
 }
+
+
