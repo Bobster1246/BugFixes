@@ -336,18 +336,21 @@ namespace BugFixes
 
             foreach (string body_buff in body_buffs)
             {
+                
                 BlueprintBuff blue = ResourcesLibrary.TryGetBlueprint<BlueprintBuff>(BlueprintGuid.Parse(body_buff));
                 for (int i = 0; i < blue.ComponentsArray.Length; ++i)
                 {
                     if (blue.ComponentsArray[i] is AddStatBonusAbilityValue)
                     {
-                        AddStatBonusAbilityValue original = (AddStatBonusAbilityValue) blue.ComponentsArray[i];
+                        AddStatBonusAbilityValue original = (AddStatBonusAbilityValue)blue.ComponentsArray[i];
 
                         AddStatBonus replacement = new AddStatBonus();
                         replacement.Descriptor = original.Descriptor;
                         replacement.Value = original.Value.Value;
                         replacement.Stat = original.Stat;
                         replacement.ScaleByBasicAttackBonus = false;
+                        replacement.OwnerBlueprint = original.OwnerBlueprint;
+                        replacement.name = original.name;
 
                         blue.ComponentsArray[i] = replacement;
                     }
