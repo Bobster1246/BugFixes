@@ -285,6 +285,7 @@ namespace BugFixes
                 PatchDazzling();
                 PatchBody();
                 PatchRadiance();
+                PatchGrace();
 
                 FixEnduringEnchanment.GetBlueprints();
             }
@@ -324,6 +325,17 @@ namespace BugFixes
 
             Main.modEntry.Logger.Log("Done patching radiance buffs");
 
+        }
+
+        static void PatchGrace()
+        {
+            Main.modEntry.Logger.Log("About to start patching grace");
+
+
+            BlueprintAbility blue = ResourcesLibrary.TryGetBlueprint<BlueprintAbility>(BlueprintGuid.Parse("199d585bff173c74b86387856919242c"));
+            blue.AvailableMetamagic |= Metamagic.Extend;
+
+            Main.modEntry.Logger.Log("Done patching grace");
         }
 
         static void PatchBody()
