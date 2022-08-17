@@ -309,10 +309,8 @@ namespace BugFixes
                 BlueprintBuff buff = ResourcesLibrary.TryGetBlueprint<BlueprintBuff>(BlueprintGuid.Parse(radiance_buff));
                 for (int i = 0; i < buff.ComponentsArray.Length; ++i)
                 {
-                    if (buff.ComponentsArray[i] is AddFacts)
+                    if (buff.ComponentsArray[i] is AddFacts original)
                     {
-                        AddFacts original = (AddFacts)buff.ComponentsArray[i];
-
                         ReferenceArrayProxy<BlueprintUnitFact, BlueprintUnitFactReference> facts = original.Facts;
                         facts[0] = ability;
                         
@@ -340,10 +338,8 @@ namespace BugFixes
                 BlueprintBuff blue = ResourcesLibrary.TryGetBlueprint<BlueprintBuff>(BlueprintGuid.Parse(body_buff));
                 for (int i = 0; i < blue.ComponentsArray.Length; ++i)
                 {
-                    if (blue.ComponentsArray[i] is AddStatBonusAbilityValue)
+                    if (blue.ComponentsArray[i] is AddStatBonusAbilityValue original)
                     {
-                        AddStatBonusAbilityValue original = (AddStatBonusAbilityValue)blue.ComponentsArray[i];
-
                         AddStatBonus replacement = new AddStatBonus();
                         replacement.Descriptor = original.Descriptor;
                         replacement.Value = original.Value.Value;
