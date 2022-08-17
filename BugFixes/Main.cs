@@ -36,6 +36,12 @@ using Kingmaker.UI.GenericSlot;
 using Kingmaker.Blueprints.Items.Ecnchantments;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Controllers;
+using Kingmaker.RuleSystem.Rules.Abilities;
+using Kingmaker.UnitLogic.Abilities.Components;
+using Kingmaker.Settings.Difficulty;
+using Kingmaker.Settings;
+using Kingmaker.Blueprints.Items.Equipment;
+using Kingmaker.Craft;
 
 namespace BugFixes
 {
@@ -278,6 +284,7 @@ namespace BugFixes
 
                 PatchDazzling();
                 PatchBody();
+                PatchRadiance();
 
                 FixEnduringEnchanment.GetBlueprints();
             }
@@ -285,6 +292,38 @@ namespace BugFixes
             {
                 Main.modEntry.Logger.LogException(e);
             } 
+        }
+
+
+        static void PatchRadiance()
+        {
+            Main.modEntry.Logger.Log("About to start patching radiance buffs");
+            string[] radiance_buffs = new string[] {
+                "f10cba2c41612614ea28b5fc2743bc4c", // Good buff
+                "b894f848bf557df47aacb00f2463c8f9", // Bad buff
+            };
+            BlueprintAbility ability = ResourcesLibrary.TryGetBlueprint<BlueprintAbility>(BlueprintGuid.Parse("aefc25a5e96a484fbc93941da960cd20"));
+
+            foreach (string radiance_buff in radiance_buffs)
+            {
+                BlueprintBuff buff = ResourcesLibrary.TryGetBlueprint<BlueprintBuff>(BlueprintGuid.Parse(radiance_buff));
+                for (int i = 0; i < buff.ComponentsArray.Length; ++i)
+                {
+                    if (buff.ComponentsArray[i] is AddFacts)
+                    {
+                        AddFacts original = (AddFacts)buff.ComponentsArray[i];
+
+                        ReferenceArrayProxy<BlueprintUnitFact, BlueprintUnitFactReference> facts = original.Facts;
+                        facts[0] = ability;
+                        
+                    }
+
+                }
+            }
+
+
+            Main.modEntry.Logger.Log("Done patching radiance buffs");
+
         }
 
         static void PatchBody()
@@ -428,70 +467,6 @@ namespace BugFixes
                     slot.Item.AddEnchantment(enchant.Enchantment, context, new Rounds?(rounds)).RemoveOnUnequipItem = enchant.RemoveOnUnequip;
                 }
             }
-        }
-    }
-
-
-    [HarmonyPatch(typeof(RuleDispelMagic), nameof(RuleDispelMagic.OnTrigger))]
-    static class FixDispel
-    {
-
-        static bool Prefix(RuleDispelMagic __instance, RulebookEventContext rulebookContext)
-        {
-            try
-            {
-                FixedOnTrigger(__instance, rulebookContext);
-            }
-            catch (Exception ex)
-            {
-                Main.modEntry.Logger.LogException(ex);
-            }
-            return false;
-        }
-
-        public static void FixedOnTrigger(RuleDispelMagic rule, RulebookEventContext rulebookContext)
-        {
-            Traverse CheckRoll = Traverse.Create(rule).Property("CheckRoll");
-            Traverse CasterLevel = Traverse.Create(rule).Property("CasterLevel");
-            Traverse DC = Traverse.Create(rule).Property("DC");
-
-            switch (rule.Check)
-            {
-                case RuleDispelMagic.CheckType.None:
-                    rule.Buff?.Remove();
-                    rule.AreaEffect?.ForceEnd();
-                    CheckRoll.SetValue(Rulebook.Trigger<RuleRollD20>(new RuleRollD20(Rulebook.CurrentContext.CurrentEvent?.Initiator, 20)));
-                    return;
-                case RuleDispelMagic.CheckType.CasterLevel:
-                    DC.SetValue(11 + rule.Context.Params.CasterLevel);
-                    break;
-                case RuleDispelMagic.CheckType.DC:
-                    DC.SetValue(rule.Context.Params.DC);
-                    break;
-                case RuleDispelMagic.CheckType.SkillDC:
-                    DC.SetValue(rule.Context.Params.DC);
-                    break;
-                case RuleDispelMagic.CheckType.SkillCasterLevel:
-                    DC.SetValue(11 + rule.Context.Params.CasterLevel);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-            
-            MechanicsContext context = rule.Reason.Context;
-            CasterLevel.SetValue(rule.Check == RuleDispelMagic.CheckType.SkillDC || rule.Check == RuleDispelMagic.CheckType.SkillCasterLevel ? (int)rule.Initiator.Stats.GetStat(rule.Skill) : (((context != null) && (context.Params.CasterLevel != 1)) ? context.Params.CasterLevel : rule.Initiator.Descriptor.Progression.CharacterLevel));
-            if (rule.MaxCasterLevel.HasValue)
-            {
-                CasterLevel.SetValue(Math.Min(rule.MaxCasterLevel.Value, rule.CasterLevel));
-            }
-                
-            CheckRoll.SetValue(RulebookEvent.Dice.D20);
-            if (rule.RollOverride > 0)
-                rule.CheckRoll.Override(rule.RollOverride);
-            if (!rule.Success)
-                return;
-            rule.Buff?.Remove();
-            rule.AreaEffect?.ForceEnd();
         }
     }
 }

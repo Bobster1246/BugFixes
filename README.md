@@ -15,4 +15,4 @@ Currently implemented fixes:
 - Body spells are now affected by BFT Powerful Change
 - Enduring Enchanment now works for item enchants
 - Dazzling Display while mounted now works
-- Non-spell based dispels now work properly (Radiance, Dispelling Attack, etc)
+- Fixed radiance dispel
