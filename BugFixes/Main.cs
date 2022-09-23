@@ -23,29 +23,20 @@ using Kingmaker.Utility;
 using Kingmaker.Blueprints.JsonSystem;
 using Kingmaker.Blueprints;
 using Kingmaker.UnitLogic.Abilities.Blueprints;
-using Kingmaker.Visual.Animation.Kingmaker;
 using Kingmaker.Visual.Animation.Kingmaker.Actions;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.Designers.Mechanics.Buffs;
 using Kingmaker.Items.Slots;
-using System.Runtime.CompilerServices;
-using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.UnitLogic.Mechanics.Actions;
 using Kingmaker.ElementsSystem;
 using Kingmaker.UI.GenericSlot;
 using Kingmaker.Blueprints.Items.Ecnchantments;
 using Kingmaker.Blueprints.Facts;
 using Kingmaker.Controllers;
-using Kingmaker.RuleSystem.Rules.Abilities;
-using Kingmaker.UnitLogic.Abilities.Components;
-using Kingmaker.Settings.Difficulty;
-using Kingmaker.Settings;
-using Kingmaker.Blueprints.Items.Equipment;
-using Kingmaker.Craft;
 
 namespace BugFixes
 {
-    static class Main
+  static class Main
     {
         public static UnityModManager.ModEntry modEntry;
 
