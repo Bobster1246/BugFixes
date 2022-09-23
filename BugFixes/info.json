@@ -6,5 +6,6 @@
   "Version": "1.0.4",
   "Requirements": [],
   "AssemblyName": "BugFixes.dll",
-  "EntryMethod": "BugFixes.Main.Load"
+  "EntryMethod": "BugFixes.Main.Load",
+  "LoadAfter": ["MewsiferConsole.Mod"]
 }
