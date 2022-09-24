@@ -3,8 +3,9 @@
   "DisplayName": "BugFixes",
   "Author": "Bobster1246",
   "ManagerVersion": "0.23.0",
-  "Version": "1.0.4",
+  "Version": "1.1.0",
   "Requirements": [],
   "AssemblyName": "BugFixes.dll",
-  "EntryMethod": "BugFixes.Main.Load"
+  "EntryMethod": "BugFixes.Main.Load",
+  "LoadAfter": ["MewsiferConsole.Mod"]
 }

@@ -42,6 +42,11 @@ using Kingmaker.Settings.Difficulty;
 using Kingmaker.Settings;
 using Kingmaker.Blueprints.Items.Equipment;
 using Kingmaker.Craft;
+using Kingmaker.Blueprints.JsonSystem.Converters;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using UnityEngine;
+using Kingmaker.Localization;
 
 namespace BugFixes
 {
@@ -67,210 +72,6 @@ namespace BugFixes
 
     }
 
-    //HarmonyPatch attribute allows PatchAll to find the patch
-    [HarmonyPatch(typeof(AddStatBonus), nameof(AddStatBonus.TryApplyArcanistPowerfulChange))]
-    static class AddStatBonus_TryApplyArcanistPowerfulChange_Patch
-    {
-        static bool Prefix(EntityFact fact, StatType stat, int value, ref PowerfulChangeType? powerfulChange, ref int __result)
-        {
-
-            __result = FixedTryApplyArcanistPowerfulChange(fact, stat, value, ref powerfulChange);
-            return false;
-        }
-
-        public static int FixedTryApplyArcanistPowerfulChange(EntityFact fact, StatType stat, int value, ref PowerfulChangeType? powerfulChange)
-        {
-            try
-            {
-                MechanicsContext mechanicsContext = fact?.MaybeContext;
-                if (mechanicsContext == null)
-                {
-                    return value;
-                }
-                UnitEntityData maybeCaster = mechanicsContext.MaybeCaster;
-                if (maybeCaster == null)
-                {
-                    Main.modEntry.Logger.Log("Caster is missing");
-                    return value;
-                }
-                if (!stat.IsAttribute() || value < 0)
-                {
-                    return value;
-                }
-                AbilityExecutionContext sourceAbilityContext = mechanicsContext.SourceAbilityContext;
-                if (!powerfulChange.HasValue)
-                {
-                    if (sourceAbilityContext?.Ability?.Spellbook == null)
-                    {
-                        return value;
-                    }
-                    if (!sourceAbilityContext.Ability.Blueprint.IsSpell)
-                    {
-                        return value;
-                    }
-                    if (!sourceAbilityContext.Ability.Spellbook.Blueprint.IsArcanist)
-                    {
-                        return value;
-                    }
-                    if (sourceAbilityContext.SpellSchool != SpellSchool.Transmutation)
-                    {
-                        return value;
-                    }
-                }
-                if ((bool)maybeCaster.State.Features.ImprovedPowerfulChange || powerfulChange == PowerfulChangeType.Improved)
-                {
-                    powerfulChange = PowerfulChangeType.Improved;
-                    value += 4;
-                }
-                else if ((bool)maybeCaster.State.Features.PowerfulChange || powerfulChange == PowerfulChangeType.Simple)
-                {
-                    powerfulChange = PowerfulChangeType.Simple;
-                    value += 2;
-                }
-
-                return value;
-            }
-            catch (Exception ex)
-            {
-                Main.modEntry.Logger.LogException(ex);
-                return value;
-            }
-        }
-    }
-
-
-    [HarmonyPatch(typeof(UnitPartConcealment), nameof(UnitPartConcealment.Calculate))]
-    static class FixTrueSeeing
-    {
-
-        static bool Prefix(ref Concealment __result, [NotNull] UnitEntityData initiator, [NotNull] UnitEntityData target, bool attack = false)
-        {
-            try
-            {
-                __result = FixedCalculate(initiator, target, attack);
-            }
-            catch (Exception ex)
-            {
-                Main.modEntry.Logger.LogException(ex);
-            }
-            return false;
-        }
-
-        public static Concealment FixedCalculate([NotNull] UnitEntityData initiator, [NotNull] UnitEntityData target, bool attack = false)
-        {
-            UnitPartConcealment unitPartConcealment = initiator.Get<UnitPartConcealment>();
-            UnitPartConcealment unitPartConcealment2 = target.Get<UnitPartConcealment>();
-            if (unitPartConcealment != null && unitPartConcealment.IgnoreAll)
-            {
-                return Concealment.None;
-            }
-
-            List<(Feet Range, UnitConditionExceptions Exceptions)> unitPartConcealment_m_BlindsightRanges = null;
-            if (unitPartConcealment != null)
-            {
-                unitPartConcealment_m_BlindsightRanges = Traverse.Create(unitPartConcealment).Field("m_BlindsightRanges").GetValue<List<(Feet Range, UnitConditionExceptions Exceptions)>>();
-            }
-            if (unitPartConcealment_m_BlindsightRanges != null)
-            {
-                Feet feet = 0.Feet();
-                foreach (var blindsightRange in unitPartConcealment_m_BlindsightRanges)
-                {
-                    if ((blindsightRange.Exceptions == null || !blindsightRange.Exceptions.IsExceptional(target)) && feet < blindsightRange.Range)
-                    {
-                        (feet, _) = blindsightRange;
-                    }
-                }
-                float num = initiator.View.Corpulence + target.View.Corpulence;
-                if (initiator.DistanceTo(target) - num <= feet.Meters)
-                {
-                    return Concealment.None;
-                }
-            }
-            Concealment concealment = ((unitPartConcealment2 != null && Traverse.Create(unitPartConcealment2).Method("IsConcealedFor", new object[] { initiator }).GetValue<bool>()) ? Concealment.Total : Concealment.None);
-            bool seeInvisibility = initiator.Descriptor.State.HasCondition(UnitCondition.SeeInvisibility) || initiator.Descriptor.State.HasCondition(UnitCondition.TrueSeeing);
-            if (target.Descriptor.State.HasCondition(UnitCondition.Invisible) && (!seeInvisibility || !initiator.Descriptor.State.GetConditionExceptions(UnitCondition.SeeInvisibility).Any((UnitConditionExceptions _exception) => _exception == null || !_exception.IsExceptional(target))))
-            {
-                concealment = Concealment.Total;
-            }
-            List<UnitPartConcealment.ConcealmentEntry> unitPartConcealment2_m_Concealments = null;
-            if (unitPartConcealment2 != null)
-            {
-                unitPartConcealment2_m_Concealments = Traverse.Create(unitPartConcealment2).Field("m_Concealments").GetValue<List<UnitPartConcealment.ConcealmentEntry>>();
-            }
-            if (concealment < Concealment.Total && unitPartConcealment2_m_Concealments != null)
-            {
-                foreach (UnitPartConcealment.ConcealmentEntry concealment2 in unitPartConcealment2_m_Concealments)
-                {
-                    if (concealment2.OnlyForAttacks && !attack)
-                    {
-                        continue;
-                    }
-                    if (concealment2.DistanceGreater > 0.Feet())
-                    {
-                        float num2 = initiator.DistanceTo(target);
-                        float num3 = initiator.View.Corpulence + target.View.Corpulence;
-                        if (num2 <= concealment2.DistanceGreater.Meters + num3)
-                        {
-                            continue;
-                        }
-                    }
-                    if (concealment2.RangeType.HasValue)
-                    {
-                        RuleAttackRoll ruleAttackRoll = Rulebook.CurrentContext.LastEvent<RuleAttackRoll>();
-                        ItemEntityWeapon itemEntityWeapon = ((ruleAttackRoll != null) ? ruleAttackRoll.Weapon : initiator.GetFirstWeapon());
-                        if (itemEntityWeapon == null || !concealment2.RangeType.Value.IsSuitableWeapon(itemEntityWeapon))
-                        {
-                            continue;
-                        }
-                    }
-                    if ((concealment2.Descriptor != ConcealmentDescriptor.Blur && concealment2.Descriptor != ConcealmentDescriptor.Displacement) || !initiator.Descriptor.State.HasCondition(UnitCondition.TrueSeeing) || !initiator.Descriptor.State.GetConditionExceptions(UnitCondition.TrueSeeing).EmptyIfNull().Any((UnitConditionExceptions _exception) => !(_exception is UnitConditionExceptionsTargetHasFacts unitConditionExceptionsTargetHasFacts) || !unitConditionExceptionsTargetHasFacts.IsExceptional(target)))
-                    {
-                        concealment = Max(concealment, concealment2.Concealment);
-                    }
-                }
-            }
-            if (unitPartConcealment2 != null && unitPartConcealment2.Disable)
-            {
-                concealment = Concealment.None;
-            }
-            if (initiator.Descriptor.State.HasCondition(UnitCondition.Blindness))
-            {
-                concealment = Concealment.Total;
-            }
-            if (initiator.Descriptor.State.HasCondition(UnitCondition.PartialConcealmentOnAttacks))
-            {
-                concealment = Concealment.Partial;
-            }
-            if (concealment == Concealment.None && Game.Instance.Player.Weather.ActualWeather >= BlueprintRoot.Instance.WeatherSettings.ConcealmentBeginsOn)
-            {
-                RuleAttackRoll ruleAttackRoll2 = Rulebook.CurrentContext.LastEvent<RuleAttackRoll>();
-                ItemEntityWeapon itemEntityWeapon2 = ((ruleAttackRoll2 != null) ? ruleAttackRoll2.Weapon : initiator.GetFirstWeapon());
-                if (itemEntityWeapon2 != null && WeaponRangeType.Ranged.IsSuitableWeapon(itemEntityWeapon2))
-                {
-                    concealment = Concealment.Partial;
-                }
-            }
-            if (unitPartConcealment != null && unitPartConcealment.IgnorePartial && concealment == Concealment.Partial)
-            {
-                concealment = Concealment.None;
-            }
-            if (unitPartConcealment != null && unitPartConcealment.TreatTotalAsPartial && concealment == Concealment.Total)
-            {
-                concealment = Concealment.Partial;
-            }
-            return concealment;
-        }
-
-        private static Concealment Max(Concealment a, Concealment b)
-        {
-            if (a <= b)
-            {
-                return b;
-            }
-            return a;
-        }
-    }
-
     [HarmonyPatch(typeof(BlueprintsCache), nameof(BlueprintsCache.Init))]
     static class BlueprintsCache_Init_Patch
     {
@@ -281,8 +82,7 @@ namespace BugFixes
             {
                 if (loaded) return;
                 loaded = true;
-
-                PatchDazzling();
+                
                 PatchBody();
                 PatchRadiance();
                 PatchGrace();
@@ -310,10 +110,8 @@ namespace BugFixes
                 BlueprintBuff buff = ResourcesLibrary.TryGetBlueprint<BlueprintBuff>(BlueprintGuid.Parse(radiance_buff));
                 for (int i = 0; i < buff.ComponentsArray.Length; ++i)
                 {
-                    if (buff.ComponentsArray[i] is AddFacts)
+                    if (buff.ComponentsArray[i] is AddFacts original)
                     {
-                        AddFacts original = (AddFacts)buff.ComponentsArray[i];
-
                         ReferenceArrayProxy<BlueprintUnitFact, BlueprintUnitFactReference> facts = original.Facts;
                         facts[0] = ability;
                         
@@ -324,7 +122,6 @@ namespace BugFixes
 
 
             Main.modEntry.Logger.Log("Done patching radiance buffs");
-
         }
 
         static void PatchGrace()
@@ -352,10 +149,8 @@ namespace BugFixes
                 BlueprintBuff blue = ResourcesLibrary.TryGetBlueprint<BlueprintBuff>(BlueprintGuid.Parse(body_buff));
                 for (int i = 0; i < blue.ComponentsArray.Length; ++i)
                 {
-                    if (blue.ComponentsArray[i] is AddStatBonusAbilityValue)
+                    if (blue.ComponentsArray[i] is AddStatBonusAbilityValue original)
                     {
-                        AddStatBonusAbilityValue original = (AddStatBonusAbilityValue)blue.ComponentsArray[i];
-
                         AddStatBonus replacement = new AddStatBonus();
                         replacement.Descriptor = original.Descriptor;
                         replacement.Value = original.Value.Value;
@@ -372,26 +167,6 @@ namespace BugFixes
 
 
             Main.modEntry.Logger.Log("Done patching body buffs");
-
-        }
-
-        static void PatchDazzling()
-        {
-            Main.modEntry.Logger.Log("About to start patching Dazzling");
-            string[] dazzling_actions = new string[] {
-                "5f3126d4120b2b244a95cb2ec23d69fb", // Normal version
-                "08c10a3914fa5bf459054a34a7541704", // Move action
-                "ba2951ffa6bcbfb4c83cdfb6919862c5", // Standard action
-            };
-
-            foreach (string dazzling_action in dazzling_actions)
-            {
-                BlueprintAbility blue = ResourcesLibrary.TryGetBlueprint<BlueprintAbility>(BlueprintGuid.Parse(dazzling_action));
-                blue.Animation = UnitAnimationActionCastSpell.CastAnimationStyle.Omni;
-            }
-
-
-            Main.modEntry.Logger.Log("Done patching Dazzling");
         }
     }
 
@@ -481,6 +256,39 @@ namespace BugFixes
 
                     slot.Item.AddEnchantment(enchant.Enchantment, context, new Rounds?(rounds)).RemoveOnUnequipItem = enchant.RemoveOnUnequip;
                 }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(SharedStringConverter), nameof(SharedStringConverter.ReadJson))]
+    static class FixSharedStringConverter
+    {
+        // It is an illegal operation in Unity to instantiate SharedStringAsset using new(). This replaces the read
+        // operation with the correct implementation.
+        [HarmonyPrefix]
+        static bool ReadJson(
+          JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer, object __result)
+        {
+            try
+            {
+                if (reader.TokenType == JsonToken.Null)
+                {
+                    __result = null;
+                }
+                else
+                {
+                    string key = (string)JObject.Load(reader)["stringkey"];
+                    var asset = ScriptableObject.CreateInstance<SharedStringAsset>();
+                    asset.String = new LocalizedString() { Key = key };
+                    __result = asset;
+                }
+                // Need to just replace the method.
+                return false;
+            }
+            catch (Exception e)
+            {
+                Main.modEntry.Logger.LogException("FixSharedStringConverter", e);
+                return true;
             }
         }
     }

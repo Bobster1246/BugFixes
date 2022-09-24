@@ -43,6 +43,9 @@
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="Owlcat.Runtime.Visual, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\..\Program Files\Epic Games\PathfinderWOTR\Wrath_Data\Managed\Owlcat.Runtime.Visual.dll</HintPath>
